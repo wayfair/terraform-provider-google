@@ -33,9 +33,10 @@ func resourceStorageNotification() *schema.Resource {
 			},
 
 			"topic": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				DiffSuppressFunc: compareSelfLinkOrResourceName,
 			},
 
 			"custom_attributes": &schema.Schema{
@@ -59,7 +60,7 @@ func resourceStorageNotification() *schema.Resource {
 				},
 			},
 
-			"prefix": &schema.Schema{
+			"object_name_prefix": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
@@ -78,16 +79,22 @@ func resourceStorageNotificationCreate(d *schema.ResourceData, meta interface{})
 
 	bucket := d.Get("bucket").(string)
 
+	project, err := getProject(d, config)
+	if err != nil {
+		return err
+	}
+
+	computedTopicName := getComputedTopicName(project, d.Get("topic").(string))
+
 	storageNotification := &storage.Notification{
 		CustomAttributes: expandStringMap(d, "custom_attributes"),
 		EventTypes:       convertStringSet(d.Get("event_types").(*schema.Set)),
-		ObjectNamePrefix: d.Get("prefix").(string),
+		ObjectNamePrefix: d.Get("object_name_prefix").(string),
 		PayloadFormat:    d.Get("payload_format").(string),
-		Topic:            d.Get("topic").(string),
+		Topic:            computedTopicName,
 	}
 
 	res, err := config.clientStorage.Notifications.Insert(bucket, storageNotification).Do()
-
 	if err != nil {
 		return fmt.Errorf("Error creating notification config for bucket %s: %v", bucket, err)
 	}
@@ -100,18 +107,16 @@ func resourceStorageNotificationCreate(d *schema.ResourceData, meta interface{})
 func resourceStorageNotificationRead(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*Config)
 
-	bucket := d.Get("bucket").(string)
-	notificationID := resourceStorageNotificationParseID(d.Id())
+	bucket, notificationID := resourceStorageNotificationParseID(d.Id())
 
 	res, err := config.clientStorage.Notifications.Get(bucket, notificationID).Do()
-
 	if err != nil {
 		return handleNotFoundError(err, d, fmt.Sprintf("Notification configuration %s for bucket %s", notificationID, bucket))
 	}
 
 	d.Set("payload_format", res.PayloadFormat)
-	d.Set("topic", strings.SplitAfter(res.Topic, "//pubsub.googleapis.com/")[1])
-	d.Set("prefix", res.ObjectNamePrefix)
+	d.Set("topic", res.Topic)
+	d.Set("object_name_prefix", res.ObjectNamePrefix)
 	d.Set("event_types", res.EventTypes)
 	d.Set("self_link", res.SelfLink)
 	d.Set("custom_attributes", res.CustomAttributes)
@@ -122,12 +127,9 @@ func resourceStorageNotificationRead(d *schema.ResourceData, meta interface{}) e
 func resourceStorageNotificationDelete(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*Config)
 
-	bucket := d.Get("bucket").(string)
-
-	notificationID := resourceStorageNotificationParseID(d.Id())
+	bucket, notificationID := resourceStorageNotificationParseID(d.Id())
 
 	err := config.clientStorage.Notifications.Delete(bucket, notificationID).Do()
-
 	if err != nil {
 		return fmt.Errorf("Error deleting notification configuration %s for bucket %s: %v", notificationID, bucket, err)
 	}
@@ -136,12 +138,9 @@ func resourceStorageNotificationDelete(d *schema.ResourceData, meta interface{})
 }
 
 func resourceStorageNotificationImportState(d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
-	parts := strings.Split(d.Id(), "/")
-	if len(parts) != 3 || parts[1] != "notificationConfigs" {
-		return nil, fmt.Errorf("Invalid notification configuration specifier. Expecting {bucket}/notificationConfigs/{id}")
-	}
+	bucket, _ := resourceStorageNotificationParseID(d.Id())
 
-	d.Set("bucket", parts[0])
+	d.Set("bucket", bucket)
 
 	if err := resourceStorageNotificationRead(d, meta); err != nil {
 		return nil, err
@@ -150,8 +149,9 @@ func resourceStorageNotificationImportState(d *schema.ResourceData, meta interfa
 	return []*schema.ResourceData{d}, nil
 }
 
-func resourceStorageNotificationParseID(id string) string {
-	//NotificationID
+func resourceStorageNotificationParseID(id string) (string, string) {
+	//bucket, NotificationID
 	parts := strings.Split(id, "/")
-	return parts[2]
+
+	return parts[0], parts[2]
 }

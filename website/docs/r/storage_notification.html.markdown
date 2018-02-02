@@ -25,13 +25,13 @@ resource "google_pubsub_topic" "topic" {
 	name = "default_topic"
 }
 
-//In order to enable notifications,
-//a GCS service account unique to each project
-//must have the IAM permission "projects.topics.publish" to a Cloud Pub/Sub topic from this project
-//The only reference to this requirement can be found here:
-//https://cloud.google.com/storage/docs/gsutil/commands/notification
-//The GCS service account has the format of <project-id>@gs-project-accounts.iam.gserviceaccount.com
-//API for retrieving it https://cloud.google.com/storage/docs/json_api/v1/projects/serviceAccount/get
+// In order to enable notifications,
+// a GCS service account unique to each project
+// must have the IAM permission "projects.topics.publish" to a Cloud Pub/Sub topic from this project
+// The only reference to this requirement can be found here:
+// https://cloud.google.com/storage/docs/gsutil/commands/notification
+// The GCS service account has the format of <project-id>@gs-project-accounts.iam.gserviceaccount.com
+// API for retrieving it https://cloud.google.com/storage/docs/json_api/v1/projects/serviceAccount/get
 
 resource "google_pubsub_topic_iam_binding" "binding" {
 	topic       = "${google_pubsub_topic.topic.name}"
@@ -60,15 +60,15 @@ The following arguments are supported:
 
 * `payload_format` - (Required) The desired content of the Payload. One of `"JSON_API_V1"` or `"NONE"`.
 
-* `topic` - (Requred) The Cloud PubSub topic to which this subscription publishes.
+* `topic` - (Required) The Cloud PubSub topic to which this subscription publishes.
 
 - - -
 
-* `custom_attrubutes` - (Optional)  A set of key/value attribute pairs to attach to each Cloud PubSub message published for this notification subscription
+* `custom_attributes` - (Optional)  A set of key/value attribute pairs to attach to each Cloud PubSub message published for this notification subscription
 
 * `event_types` - (Optional) List of event type filters for this notification config. If not specified, Cloud Storage will send notifications for all event types. The valid types are: `"OBJECT_FINALIZE"`, `"OBJECT_METADATA_UPDATE"`, `"OBJECT_DELETE"`, `"OBJECT_ARCHIVE"`
 
-* `prefix` - (Optional) Specifies a prefix path filter for this notification config. Cloud Storage will only send notifications for objects in this bucket whose names begin with the specified prefix.
+* `object_name_prefix` - (Optional) Specifies a prefix path filter for this notification config. Cloud Storage will only send notifications for objects in this bucket whose names begin with the specified prefix.
 
 ## Attributes Reference
 
@@ -84,7 +84,3 @@ Storage notifications can be imported using the notification `id` in the format 
 ```
 $ terraform import google_storage_notification.notification default_bucket/notificationConfigs/102
 ```
-
-
-
-
