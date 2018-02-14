@@ -14,6 +14,9 @@ func resourceStorageDefaultObjectAcl() *schema.Resource {
 		Read:   resourceStorageDefaultObjectAclRead,
 		Update: resourceStorageDefaultObjectAclUpdate,
 		Delete: resourceStorageDefaultObjectAclDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"bucket": &schema.Schema{
@@ -61,21 +64,9 @@ func resourceStorageDefaultObjectAclCreate(d *schema.ResourceData, meta interfac
 func resourceStorageDefaultObjectAclRead(d *schema.ResourceData, meta interface{}) error {
 	config := meta.(*Config)
 
-	bucket := d.Get("bucket").(string)
+	bucket := d.Id()
 
 	roleEntities := make([]interface{}, 0)
-	reLocal := d.Get("role_entity").([]interface{})
-	reLocalMap := make(map[string]string)
-	for _, v := range reLocal {
-		res, err := getRoleEntityPair(v.(string))
-
-		if err != nil {
-			return fmt.Errorf(
-				"Old state has malformed Role/Entity pair: %v", err)
-		}
-
-		reLocalMap[res.Entity] = res.Role
-	}
 
 	res, err := config.clientStorage.DefaultObjectAccessControls.List(bucket).Do()
 
@@ -86,13 +77,17 @@ func resourceStorageDefaultObjectAclRead(d *schema.ResourceData, meta interface{
 	for _, v := range res.Items {
 		role := v.Role
 		entity := v.Entity
-		// We only store updates to the locally defined access controls
-		if _, in := reLocalMap[entity]; in {
-			roleEntities = append(roleEntities, fmt.Sprintf("%s:%s", role, entity))
-			log.Printf("[DEBUG]: saving re %s-%s", v.Role, v.Entity)
+
+		//skip project level permissions for the object
+		if v.ProjectTeam != nil {
+			continue
 		}
+
+		roleEntities = append(roleEntities, fmt.Sprintf("%s:%s", role, entity))
+		log.Printf("[DEBUG]: saving re %s-%s", v.Role, v.Entity)
 	}
 
+	d.Set("bucket", bucket)
 	d.Set("role_entity", roleEntities)
 
 	return nil

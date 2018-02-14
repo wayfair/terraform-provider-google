@@ -25,6 +25,11 @@ func TestAccGoogleStorageDefaultObjectAcl_basic(t *testing.T) {
 					testAccCheckGoogleStorageDefaultObjectAcl(bucketName, roleEntityBasic2),
 				),
 			},
+			resource.TestStep{
+				ResourceName:      "google_storage_default_object_acl.acl",
+				ImportState:       true,
+				ImportStateVerify: true,
+			},
 		},
 	})
 }

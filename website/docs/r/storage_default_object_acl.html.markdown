@@ -41,3 +41,11 @@ resource "google_storage_default_object_acl" "image-store-default-acl" {
 ## Attributes Reference
 
 Only the arguments listed above are exposed as attributes.
+
+## Import
+
+Storage default object ACLs can be imported using the  `bucket name`  e.g.
+
+```
+$ terraform import google_storage_default_object_acl.acl my-bucket-name
+```
