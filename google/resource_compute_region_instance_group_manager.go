@@ -13,7 +13,10 @@ import (
 )
 
 var RegionInstanceGroupManagerBaseApiVersion = v1
-var RegionInstanceGroupManagerVersionedFeatures = []Feature{Feature{Version: v0beta, Item: "auto_healing_policies"}}
+var RegionInstanceGroupManagerVersionedFeatures = []Feature{
+	Feature{Version: v0beta, Item: "auto_healing_policies"},
+	Feature{Version: v0beta, Item: "distribution_policy"},
+}
 
 func resourceComputeRegionInstanceGroupManager() *schema.Resource {
 	return &schema.Resource{
@@ -145,6 +148,14 @@ func resourceComputeRegionInstanceGroupManager() *schema.Resource {
 					},
 				},
 			},
+
+			"distribution_policy": &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 		},
 	}
 }
@@ -167,6 +178,7 @@ func resourceComputeRegionInstanceGroupManagerCreate(d *schema.ResourceData, met
 		NamedPorts:          getNamedPortsBeta(d.Get("named_port").([]interface{})),
 		TargetPools:         convertStringSet(d.Get("target_pools").(*schema.Set)),
 		AutoHealingPolicies: expandAutoHealingPolicies(d.Get("auto_healing_policies").([]interface{})),
+		DistributionPolicy:  expandDistributionPolicy(d.Get("distribution_policy").(*schema.Set)),
 		// Force send TargetSize to allow size of 0.
 		ForceSendFields: []string{"TargetSize"},
 	}
@@ -270,6 +282,7 @@ func resourceComputeRegionInstanceGroupManagerRead(d *schema.ResourceData, meta 
 	d.Set("fingerprint", manager.Fingerprint)
 	d.Set("instance_group", manager.InstanceGroup)
 	d.Set("auto_healing_policies", flattenAutoHealingPolicies(manager.AutoHealingPolicies))
+	d.Set("distribution_policy", flattenDistributionPolicy(manager.DistributionPolicy))
 	d.Set("self_link", ConvertSelfLinkToV1(manager.SelfLink))
 
 	if d.Get("wait_for_instances").(bool) {
@@ -508,4 +521,28 @@ func resourceComputeRegionInstanceGroupManagerDelete(d *schema.ResourceData, met
 
 	d.SetId("")
 	return nil
+}
+
+func expandDistributionPolicy(configured *schema.Set) *computeBeta.DistributionPolicy {
+	distributionPolicyZoneConfigs := make([]*computeBeta.DistributionPolicyZoneConfiguration, 0, configured.Len())
+	for _, raw := range configured.List() {
+		data := raw.(string)
+		distributionPolicyZoneConfig := computeBeta.DistributionPolicyZoneConfiguration{
+			Zone: data,
+		}
+
+		distributionPolicyZoneConfigs = append(distributionPolicyZoneConfigs, &distributionPolicyZoneConfig)
+	}
+	return &computeBeta.DistributionPolicy{Zones: distributionPolicyZoneConfigs}
+}
+
+func flattenDistributionPolicy(distributionPolicy *computeBeta.DistributionPolicy) *schema.Set {
+	zones := make([]interface{}, 0, len(distributionPolicy.Zones))
+	for _, zone := range distributionPolicy.Zones {
+		zones = append(zones, zone.Zone)
+	}
+
+	return schema.NewSet(schema.HashSchema(&schema.Schema{
+		Type: schema.TypeString,
+	}), zones)
 }
