@@ -211,7 +211,7 @@ func TestAccRegionInstanceGroupManager_distributionPolicy(t *testing.T) {
 
 	template := fmt.Sprintf("igm-test-%s", acctest.RandString(10))
 	igm := fmt.Sprintf("igm-test-%s", acctest.RandString(10))
-	zones := []string{"zones/europe-west3-a", "zones/europe-west3-b"}
+	zones := []string{"us-central1-a", "us-central1-b"}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -463,7 +463,7 @@ func testAccCheckRegionInstanceGroupManagerDistributionPolicy(n string, zones []
 		sort.Strings(sortedExisting)
 
 		for i := 0; i < len(zones); i++ {
-			if sortedExisting[i] != zones[i] {
+			if !strings.HasSuffix(sortedExisting[i], zones[i]) {
 				return fmt.Errorf("found mismatched zone configuration: expected entry #%d as '%s', got %s", i, zones[i], sortedExisting[i])
 			}
 		}
@@ -887,9 +887,6 @@ resource "google_compute_instance_template" "igm-basic" {
 	}
 	metadata {
 		foo = "bar"
-	}
-	service_account {
-		scopes = ["userinfo-email", "compute-ro", "storage-ro"]
 	}
 }
 
