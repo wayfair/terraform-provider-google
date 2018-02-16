@@ -8,7 +8,7 @@ description: |-
 
 # google\_compute\_default\_service\_account
 
-Use this data source to get project details
+Use this data source to retrieve default service account for this project
 
 ## Example Usage
 
