@@ -84,6 +84,7 @@ func Provider() terraform.ResourceProvider {
 			"google_kms_secret":                      dataSourceGoogleKmsSecret(),
 			"google_organization":                    dataSourceGoogleOrganization(),
 			"google_storage_object_signed_url":       dataSourceGoogleSignedUrl(),
+			"google_storage_project_service_account": dataSourceGoogleStorageProjectServiceAccount(),
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
