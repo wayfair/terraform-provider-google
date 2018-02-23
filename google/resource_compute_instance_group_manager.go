@@ -825,12 +825,6 @@ func expandUpdatePolicy(configured []interface{}) *computeBeta.InstanceGroupMana
 
 		updatePolicy.MinimalAction = data["minimal_action"].(string)
 		updatePolicy.Type = data["type"].(string)
-		updatePolicy.MaxSurge = &computeBeta.FixedOrPercent{
-			Fixed: int64(data["max_surge_fixed"].(int)),
-		}
-		updatePolicy.MaxUnavailable = &computeBeta.FixedOrPercent{
-			Fixed: int64(data["max_unavailable_fixed"].(int)),
-		}
 
 		// percent and fixed values are conflicting
 		// when the percent values are set, the fixed values will be ignored
@@ -838,11 +832,19 @@ func expandUpdatePolicy(configured []interface{}) *computeBeta.InstanceGroupMana
 			updatePolicy.MaxSurge = &computeBeta.FixedOrPercent{
 				Percent: int64(v.(int)),
 			}
+		} else {
+			updatePolicy.MaxSurge = &computeBeta.FixedOrPercent{
+				Fixed: int64(data["max_surge_fixed"].(int)),
+			}
 		}
 
 		if v := data["max_unavailable_percent"]; v.(int) > 0 {
 			updatePolicy.MaxUnavailable = &computeBeta.FixedOrPercent{
 				Percent: int64(v.(int)),
+			}
+		} else {
+			updatePolicy.MaxUnavailable = &computeBeta.FixedOrPercent{
+				Fixed: int64(data["max_unavailable_fixed"].(int)),
 			}
 		}
 
