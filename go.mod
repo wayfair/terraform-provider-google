@@ -16,9 +16,8 @@ require (
 	github.com/hashicorp/vault v1.0.1 // indirect
 	github.com/keybase/go-crypto v0.0.0-20181127160227-255a5089e85a // indirect
 	github.com/mitchellh/hashstructure v1.0.0
-	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/stoewer/go-strcase v1.0.2
 	github.com/terraform-providers/terraform-provider-random v2.0.0+incompatible
-	golang.org/x/oauth2 v0.0.0-20190220154721-9b3c75971fc9
-	google.golang.org/api v0.1.0
+	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
+	google.golang.org/api v0.3.2
 )
