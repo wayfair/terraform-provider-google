@@ -1,12 +1,47 @@
-## 2.5.2 (Unreleased)
+## 2.7.0 (Unreleased)
+
+BACKWARDS INCOMPATIBILITIES:
+* cloudfunctions: `google_cloudfunctions_function.runtime` now has an explicit default value of `nodejs6`. Users who have a different value set in the API but the value undefined in their config will see a diff. [GH-3605]
+
+FEATURES: 
+* **New Resources**: `google_compute_instance_iam_binding`, `google_compute_instance_iam_member`, and `google_compute_instance_iam_policy` are now available. ([#3551](https://github.com/terraform-providers/terraform-provider-google/pull/3551))
+
+BUG FIXES:
+* cloudfunctions: `google_cloudfunctions_function.runtime` now has an explicit default value of `nodejs6`. [GH-3605]
+* monitoring: patching `google_monitoring_alert_policy` is more likely to succeed [GH-3587]
+
+## 2.6.0 (May 07, 2019)
+
+KNOWN ISSUES:
+* cloudfunctions: `google_cloudfunctions_function`s without a `runtime` set will fail to create due to an upstream API change. You can work around this by setting an explicit `runtime` in `2.X` series releases.
+
+DEPRECATIONS:
+* monitoring: `google_monitoring_alert_policy` `labels` was deprecated, as the field was never used and it was typed incorrectly. ([#3494](https://github.com/terraform-providers/terraform-provider-google/issues/3494))
 
 FEATURES: 
 * **New Datasource**: `google_compute_node_types` for sole-tenant node types is now available. ([#3446](https://github.com/terraform-providers/terraform-provider-google/pull/3446))
-* **New Resource**: `google_compute_node_template` for sole-tenant node templates is now available. ([#3446](https://github.com/terraform-providers/terraform-provider-google/pull/3446))
+* **New Resource**: `google_compute_node_group` for sole-tenant nodes is now available. ([#3514](https://github.com/terraform-providers/terraform-provider-google/pull/3514))
+* **New Resource**: `google_compute_node_template` for sole-tenant nodes is now available. ([#3446](https://github.com/terraform-providers/terraform-provider-google/pull/3446))
+* **New Resource**: `google_filestore_instance` is now available at GA. ([#3522](https://github.com/terraform-providers/terraform-provider-google/issues/3522))
+* **New Resource**: `google_firestore_index` is now available to configure composite indexes on Firestore. ([#3484](https://github.com/terraform-providers/terraform-provider-google/issues/3484))
+* **New Resource**: `google_logging_metric` is now available to configure Stackdriver logs-based metrics. ([#1702](https://github.com/GoogleCloudPlatform/magic-modules/pull/1702))
+* **New Resources**: `google_compute_subnetwork_iam_binding`, `google_compute_subnetwork_iam_member`, and `google_compute_subnetwork_iam_policy` are now available at GA. ([#3541](https://github.com/terraform-providers/terraform-provider-google/issues/3541))
 
 ENHANCEMENTS:
+* dataflow: `google_dataflow_job`'s `network` and `subnetwork` can be configured. ([#3476](https://github.com/terraform-providers/terraform-provider-google/issues/3476))
+* monitoring: `google_monitoring_alert_policy` `user_labels` support was added. ([#3494](https://github.com/terraform-providers/terraform-provider-google/issues/3494))
+* compute: `google_compute_instance` and `google_compute_instance_template` now support node affinities for scheduling on sole tenant nodes [#3553](https://github.com/terraform-providers/terraform-provider-google/pull/3553)
+* compute: `google_compute_region_backend_service` is now generated with Magic Modules, adding configurable timeouts, multiple import formats, `creation_timestamp` output. ([#3521](https://github.com/terraform-providers/terraform-provider-google/pull/3521))
+* pubsub: `google_pubsub_subscription` now supports setting an `expiration_policy`. ([#1703](https://github.com/GoogleCloudPlatform/magic-modules/pull/1703))
 
 BUG FIXES:
+* bigquery: `google_bigquery_table` will work with a larger range of projects id formats. ([#3486](https://github.com/terraform-providers/terraform-provider-google/issues/3486))
+* cloudfunctions: `google_cloudfunctions_fucntion` no longer restricts an outdated list of `region`s ([#3530](https://github.com/terraform-providers/terraform-provider-google/issues/3530))
+* compute: `google_compute_instance` now retries updating metadata when fingerprints are mismatched. ([#3372](https://github.com/terraform-providers/terraform-provider-google/issues/3372))
+* compute: `google_compute_subnetwork.secondary_ip_ranges` doesn't cause a diff on out of band changes, allows updating to empty list of ranges. ([#3496](https://github.com/terraform-providers/terraform-provider-google/issues/3496))
+* container: `google_container_cluster` setting networks / subnetworks by name works with `location`. ([#3492](https://github.com/terraform-providers/terraform-provider-google/issues/3492))
+* container: `google_container_cluster` removed an overly restrictive validation restricting `node_pool` and `remove_default_node_pool` being specified at the same time. ([#3497](https://github.com/terraform-providers/terraform-provider-google/issues/3497))
+* storage: `data.google_storage_bucket_object` now correctly URL encodes the slashes in a file name ([#1613](https://github.com/terraform-providers/terraform-provider-google/issues/1613))
 
 ## 2.5.1 (April 22, 2019)
 
@@ -20,14 +55,29 @@ BUG FIXES:
 
 ## 2.5.0 (April 18, 2019)
 
-BACKWARDS INCOMPATIBILITIES
+KNOWN ISSUES:
+* compute: `google_compute_subnetwork` will fail to reorder `secondary_ip_range` values at apply time
+* compute: `google_compute_subnetwork`s used with a VPC-native GKE cluster will have a diff if that cluster creates secondary ranges automatically.
+
+BACKWARDS INCOMPATIBILITIES:
 * all: This is the first release to use the 0.12 SDK required for Terraform 0.12 support. Some provider behaviour may have changed as a result of changes made by the new SDK version.
 * compute: `google_compute_instance_group` will not reconcile instances recreated within the same `terraform apply` due to underlying `0.12` SDK changes in the provider. ([#616](https://github.com/terraform-providers/terraform-provider-google/issues/616))
+* compute: `google_compute_subnetwork` will have a diff if `secondary_ip_range` values defined in config don't exactly match real state; if so, they will need to be reconciled. ([#3432](https://github.com/terraform-providers/terraform-provider-google/issues/3432))
 * container: `google_container_cluster` will have a diff if `master_authorized_networks.cidr_blocks` defined in config doesn't exactly match the real state; if so, it will need to be reconciled. ([#3427](https://github.com/terraform-providers/terraform-provider-google/issues/3427))
 
 
 BUG FIXES:
 * container: `google_container_cluster` catch out of band changes to `master_authorized_networks.cidr_blocks`. ([#3427](https://github.com/terraform-providers/terraform-provider-google/issues/3427))
+
+## 2.4.1 (April 30, 2019)
+
+NOTES:
+This 2.4.1 release is a bugfix release for 2.4.0. It backports the fixes applied in the 2.5.1 release to the 2.4.0 series.
+
+BUG FIXES:
+* compute: `google_compute_backend_service` handles empty/nil `iap` block created by previous providers properly. ([#3459](https://github.com/terraform-providers/terraform-provider-google/issues/3459))
+* compute: `google_compute_backend_service` allows multiple instance types in `backends.group` again. ([#3463](https://github.com/terraform-providers/terraform-provider-google/issues/3463))
+* dns: `google_dns_managed_zone` does not permadiff when visiblity is set to default and returned as empty from API ([#3459](https://github.com/terraform-providers/terraform-provider-google/issues/3461))
 
 ## 2.4.0 (April 15, 2019)
 

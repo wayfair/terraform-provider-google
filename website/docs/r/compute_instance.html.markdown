@@ -154,7 +154,8 @@ The `boot_disk` block supports:
     Structure is documented below.
 
 * `source` - (Optional) The name or self_link of the existing disk (such as those managed by
-    `google_compute_disk`) to attach.
+    `google_compute_disk`) or disk image. To create an instance from a snapshot, first create a
+    `google_compute_disk` from a snapshot and reference it here.
 
 The `initialize_params` block supports:
 
@@ -273,11 +274,26 @@ The `scheduling` block supports:
     restarted if it was terminated by Compute Engine (not a user).
     Defaults to true.
 
+* `node_affinities` - (Optional) Specifies node affinities or anti-affinities
+   to determine which sole-tenant nodes your instances and managed instance
+   groups will use as host systems. Read more on sole-tenant node creation
+   [here](https://cloud.google.com/compute/docs/nodes/create-nodes).
+   Structure documented below.
+
 The `guest_accelerator` block supports:
 
 * `type` (Required) - The accelerator type resource to expose to this instance. E.g. `nvidia-tesla-k80`.
 
 * `count` (Required) - The number of the guest accelerator cards exposed to this instance.
+
+The `node_affinities` block supports:
+
+* `key` (Required) - The key for the node affinity label.
+
+* `operator` (Required) - The operator. Can be `IN` for node-affinities
+    or `NOT` for anti-affinities.
+
+* `value` (Required) - The values for the node affinity label.
 
 ## Attributes Reference
 

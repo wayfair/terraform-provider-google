@@ -267,7 +267,7 @@ github.com/zclconf/go-cty/cty/gocty
 github.com/zclconf/go-cty/cty/set
 github.com/zclconf/go-cty/cty/function
 github.com/zclconf/go-cty/cty/function/stdlib
-# go.opencensus.io v0.20.1
+# go.opencensus.io v0.21.0
 go.opencensus.io/trace
 go.opencensus.io/internal
 go.opencensus.io/trace/internal
@@ -275,16 +275,16 @@ go.opencensus.io/trace/tracestate
 go.opencensus.io/plugin/ocgrpc
 go.opencensus.io/plugin/ochttp
 go.opencensus.io
+go.opencensus.io/metric/metricdata
 go.opencensus.io/stats
 go.opencensus.io/stats/view
 go.opencensus.io/tag
 go.opencensus.io/trace/propagation
 go.opencensus.io/plugin/ochttp/propagation/b3
+go.opencensus.io/resource
 go.opencensus.io/stats/internal
 go.opencensus.io/internal/tagencoding
-go.opencensus.io/metric/metricdata
 go.opencensus.io/metric/metricproducer
-go.opencensus.io/resource
 # golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 golang.org/x/crypto/openpgp
 golang.org/x/crypto/bcrypt
@@ -325,7 +325,7 @@ golang.org/x/text/unicode/norm
 golang.org/x/text/transform
 golang.org/x/text/secure/bidirule
 golang.org/x/text/unicode/bidi
-# google.golang.org/api v0.3.2
+# google.golang.org/api v0.4.0
 google.golang.org/api/appengine/v1
 google.golang.org/api/bigquery/v2
 google.golang.org/api/cloudbilling/v1

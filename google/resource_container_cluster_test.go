@@ -1416,6 +1416,9 @@ resource "google_container_cluster" "primary" {
 	name               = "%s"
 	location           = "us-central1-a"
 	initial_node_count = 3
+
+	network    = "default"
+	subnetwork = "default"
 }`, name)
 }
 
@@ -2409,18 +2412,32 @@ resource "google_container_cluster" "with_resource_labels" {
 
 func testAccContainerCluster_withInitialCIDR(clusterName string) string {
 	return fmt.Sprintf(`
+resource "google_compute_network" "container_network" {
+  name                    = "container-net-%s"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "container_subnetwork" {
+  name          = "${google_compute_network.container_network.name}"
+  network       = "${google_compute_network.container_network.name}"
+  ip_cidr_range = "10.128.0.0/9"
+}
+
 resource "google_container_cluster" "cidr_error_preempt" {
   name = "%s"
   zone = "us-central1-a"
 
+  network    = "${google_compute_network.container_network.name}"
+  subnetwork = "${google_compute_subnetwork.container_subnetwork.name}"
+
   initial_node_count = 1
 
   ip_allocation_policy {
-	cluster_ipv4_cidr_block = "10.3.0.0/19"
-	services_ipv4_cidr_block = "10.4.0.0/19"
+	cluster_ipv4_cidr_block = "10.0.0.0/16"
+	services_ipv4_cidr_block = "10.1.0.0/16"
   }
 }
-`, clusterName)
+`, clusterName, clusterName)
 }
 
 func testAccContainerCluster_withCIDROverlap(initConfig, secondCluster string) string {
@@ -2431,11 +2448,14 @@ resource "google_container_cluster" "cidr_error_overlap" {
   name = "%s"
   zone = "us-central1-a"
 
+  network    = "${google_compute_network.container_network.name}"
+  subnetwork = "${google_compute_subnetwork.container_subnetwork.name}"
+
   initial_node_count = 1
 
   ip_allocation_policy {
-	cluster_ipv4_cidr_block = "10.3.0.0/19"
-	services_ipv4_cidr_block = "10.4.0.0/19"
+    cluster_ipv4_cidr_block = "10.0.0.0/16"
+    services_ipv4_cidr_block = "10.1.0.0/16"
   }
 }
 `, initConfig, secondCluster)

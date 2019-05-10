@@ -455,7 +455,6 @@ func resourceContainerCluster() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: schemaNodePool,
 				},
-				ConflictsWith: []string{"remove_default_node_pool"},
 			},
 
 			"node_version": {
@@ -588,9 +587,8 @@ func resourceContainerCluster() *schema.Resource {
 			},
 
 			"remove_default_node_pool": {
-				Type:          schema.TypeBool,
-				Optional:      true,
-				ConflictsWith: []string{"node_pool"},
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 
 			"private_cluster_config": {
@@ -651,6 +649,14 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 	location, err := getLocation(d, config)
 	if err != nil {
 		return err
+	}
+
+	// When parsing a subnetwork by name, we expect region or zone to be set.
+	// Users may have set location to either value, so set that value.
+	if isZone(location) {
+		d.Set("zone", location)
+	} else {
+		d.Set("region", location)
 	}
 
 	clusterName := d.Get("name").(string)

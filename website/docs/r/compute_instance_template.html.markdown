@@ -190,8 +190,6 @@ The following arguments are supported:
 
 * `machine_type` - (Required) The machine type to create.
 
-    **Note:** If you want to update this value (resize the VM) after initial creation, you must set [`allow_stopping_for_update`](#allow_stopping_for_update) to `true`.
-
     To create a machine with a [custom type][custom-vm-types] (such as extended memory), format the value like `custom-VCPUS-MEM_IN_MB` like `custom-6-20480` for 6 vCPU and 20GB of RAM.
 
 - - -
@@ -374,12 +372,27 @@ The `scheduling` block supports:
 * `preemptible` - (Optional) Allows instance to be preempted. This defaults to
     false. Read more on this
     [here](https://cloud.google.com/compute/docs/instances/preemptible).
+    
+* `node_affinities` - (Optional) Specifies node affinities or anti-affinities
+   to determine which sole-tenant nodes your instances and managed instance
+   groups will use as host systems. Read more on sole-tenant node creation
+   [here](https://cloud.google.com/compute/docs/nodes/create-nodes).
+   Structure documented below.
 
 The `guest_accelerator` block supports:
 
 * `type` (Required) - The accelerator type resource to expose to this instance. E.g. `nvidia-tesla-k80`.
 
 * `count` (Required) - The number of the guest accelerator cards exposed to this instance.
+
+The `node_affinities` block supports:
+
+* `key` (Required) - The key for the node affinity label.
+
+* `operator` (Required) - The operator. Can be `IN` for node-affinities
+    or `NOT` for anti-affinities.
+
+* `value` (Required) - The values for the node affinity label.
 
 ## Attributes Reference
 

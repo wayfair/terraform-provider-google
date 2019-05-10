@@ -19,6 +19,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform/helper/schema"
@@ -259,19 +260,17 @@ func resourceMonitoringAlertPolicy() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
-			"labels": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
 			"notification_channels": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+			},
+			"user_labels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			"creation_record": {
 				Type:     schema.TypeList,
@@ -293,6 +292,14 @@ func resourceMonitoringAlertPolicy() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+			"labels": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Deprecated: "labels is removed as it was never used. See user_labels for the correct field",
 			},
 			"project": {
 				Type:     schema.TypeString,
@@ -338,11 +345,11 @@ func resourceMonitoringAlertPolicyCreate(d *schema.ResourceData, meta interface{
 	} else if v, ok := d.GetOkExists("notification_channels"); !isEmptyValue(reflect.ValueOf(notificationChannelsProp)) && (ok || !reflect.DeepEqual(v, notificationChannelsProp)) {
 		obj["notificationChannels"] = notificationChannelsProp
 	}
-	labelsProp, err := expandMonitoringAlertPolicyLabels(d.Get("labels"), d, config)
+	userLabelsProp, err := expandMonitoringAlertPolicyUserLabels(d.Get("user_labels"), d, config)
 	if err != nil {
 		return err
-	} else if v, ok := d.GetOkExists("labels"); !isEmptyValue(reflect.ValueOf(labelsProp)) && (ok || !reflect.DeepEqual(v, labelsProp)) {
-		obj["labels"] = labelsProp
+	} else if v, ok := d.GetOkExists("user_labels"); !isEmptyValue(reflect.ValueOf(userLabelsProp)) && (ok || !reflect.DeepEqual(v, userLabelsProp)) {
+		obj["userLabels"] = userLabelsProp
 	}
 	documentationProp, err := expandMonitoringAlertPolicyDocumentation(d.Get("documentation"), d, config)
 	if err != nil {
@@ -431,7 +438,7 @@ func resourceMonitoringAlertPolicyRead(d *schema.ResourceData, meta interface{})
 	if err := d.Set("notification_channels", flattenMonitoringAlertPolicyNotificationChannels(res["notificationChannels"], d)); err != nil {
 		return fmt.Errorf("Error reading AlertPolicy: %s", err)
 	}
-	if err := d.Set("labels", flattenMonitoringAlertPolicyLabels(res["labels"], d)); err != nil {
+	if err := d.Set("user_labels", flattenMonitoringAlertPolicyUserLabels(res["userLabels"], d)); err != nil {
 		return fmt.Errorf("Error reading AlertPolicy: %s", err)
 	}
 	if err := d.Set("documentation", flattenMonitoringAlertPolicyDocumentation(res["documentation"], d)); err != nil {
@@ -475,11 +482,11 @@ func resourceMonitoringAlertPolicyUpdate(d *schema.ResourceData, meta interface{
 	} else if v, ok := d.GetOkExists("notification_channels"); !isEmptyValue(reflect.ValueOf(v)) && (ok || !reflect.DeepEqual(v, notificationChannelsProp)) {
 		obj["notificationChannels"] = notificationChannelsProp
 	}
-	labelsProp, err := expandMonitoringAlertPolicyLabels(d.Get("labels"), d, config)
+	userLabelsProp, err := expandMonitoringAlertPolicyUserLabels(d.Get("user_labels"), d, config)
 	if err != nil {
 		return err
-	} else if v, ok := d.GetOkExists("labels"); !isEmptyValue(reflect.ValueOf(v)) && (ok || !reflect.DeepEqual(v, labelsProp)) {
-		obj["labels"] = labelsProp
+	} else if v, ok := d.GetOkExists("user_labels"); !isEmptyValue(reflect.ValueOf(v)) && (ok || !reflect.DeepEqual(v, userLabelsProp)) {
+		obj["userLabels"] = userLabelsProp
 	}
 	documentationProp, err := expandMonitoringAlertPolicyDocumentation(d.Get("documentation"), d, config)
 	if err != nil {
@@ -501,6 +508,41 @@ func resourceMonitoringAlertPolicyUpdate(d *schema.ResourceData, meta interface{
 	}
 
 	log.Printf("[DEBUG] Updating AlertPolicy %q: %#v", d.Id(), obj)
+	updateMask := []string{}
+
+	if d.HasChange("display_name") {
+		updateMask = append(updateMask, "displayName")
+	}
+
+	if d.HasChange("combiner") {
+		updateMask = append(updateMask, "combiner")
+	}
+
+	if d.HasChange("enabled") {
+		updateMask = append(updateMask, "enabled")
+	}
+
+	if d.HasChange("conditions") {
+		updateMask = append(updateMask, "conditions")
+	}
+
+	if d.HasChange("notification_channels") {
+		updateMask = append(updateMask, "notificationChannels")
+	}
+
+	if d.HasChange("user_labels") {
+		updateMask = append(updateMask, "userLabels")
+	}
+
+	if d.HasChange("documentation") {
+		updateMask = append(updateMask, "documentation")
+	}
+	// updateMask is a URL parameter but not present in the schema, so replaceVars
+	// won't set it
+	url, err = addQueryParams(url, map[string]string{"updateMask": strings.Join(updateMask, ",")})
+	if err != nil {
+		return err
+	}
 	_, err = sendRequestWithTimeout(config, "PATCH", url, obj, d.Timeout(schema.TimeoutUpdate))
 
 	if err != nil {
@@ -540,7 +582,7 @@ func resourceMonitoringAlertPolicyImport(d *schema.ResourceData, meta interface{
 
 	config := meta.(*Config)
 
-	// current import_formats can't import id's with forward slashes in them.
+	// current import_formats can't import fields with forward slashes in their value
 	if err := parseImportId([]string{"(?P<name>.+)"}, d, config); err != nil {
 		return nil, err
 	}
@@ -863,7 +905,7 @@ func flattenMonitoringAlertPolicyNotificationChannels(v interface{}, d *schema.R
 	return v
 }
 
-func flattenMonitoringAlertPolicyLabels(v interface{}, d *schema.ResourceData) interface{} {
+func flattenMonitoringAlertPolicyUserLabels(v interface{}, d *schema.ResourceData) interface{} {
 	return v
 }
 
@@ -1338,8 +1380,15 @@ func expandMonitoringAlertPolicyNotificationChannels(v interface{}, d TerraformR
 	return v, nil
 }
 
-func expandMonitoringAlertPolicyLabels(v interface{}, d TerraformResourceData, config *Config) (interface{}, error) {
-	return v, nil
+func expandMonitoringAlertPolicyUserLabels(v interface{}, d TerraformResourceData, config *Config) (map[string]string, error) {
+	if v == nil {
+		return map[string]string{}, nil
+	}
+	m := make(map[string]string)
+	for k, val := range v.(map[string]interface{}) {
+		m[k] = val.(string)
+	}
+	return m, nil
 }
 
 func expandMonitoringAlertPolicyDocumentation(v interface{}, d TerraformResourceData, config *Config) (interface{}, error) {

@@ -27,10 +27,6 @@ var functionAllowedMemory = map[int]bool{
 	2048: true,
 }
 
-// For now CloudFunctions are allowed only in the following locations.
-// Please see https://cloud.google.com/about/locations/
-var validCloudFunctionRegion = validation.StringInSlice([]string{"us-central1", "us-east1", "europe-west1", "asia-northeast1"}, true)
-
 const functionDefaultAllowedMemoryMb = 256
 
 type cloudFunctionId struct {
@@ -189,7 +185,7 @@ func resourceCloudFunctionsFunction() *schema.Resource {
 			"runtime": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true,
+				Default:  "nodejs6",
 			},
 
 			"service_account_email": {
@@ -268,6 +264,13 @@ func resourceCloudFunctionsFunction() *schema.Resource {
 				Computed: true,
 			},
 
+			"max_instances": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				Default:      0,
+				ValidateFunc: validation.IntAtLeast(0),
+			},
+
 			"project": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -276,11 +279,10 @@ func resourceCloudFunctionsFunction() *schema.Resource {
 			},
 
 			"region": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ForceNew:     true,
-				ValidateFunc: validCloudFunctionRegion,
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 		},
 	}
@@ -297,14 +299,6 @@ func resourceCloudFunctionsCreate(d *schema.ResourceData, meta interface{}) erro
 	region, err := getRegion(d, config)
 	if err != nil {
 		return err
-	}
-	// We do this extra validation here since most regions are not valid, and the
-	// error message that Cloud Functions has for "wrong region" is not specific.
-	// Provider-level region fetching skips validation, because it's not possible
-	// for the provider-level region to know about the field-level validator.
-	_, errs := validCloudFunctionRegion(region, "region")
-	if len(errs) > 0 {
-		return errs[0]
 	}
 
 	cloudFuncId := &cloudFunctionId{
@@ -364,6 +358,10 @@ func resourceCloudFunctionsCreate(d *schema.ResourceData, meta interface{}) erro
 
 	if _, ok := d.GetOk("environment_variables"); ok {
 		function.EnvironmentVariables = expandEnvironmentVariables(d)
+	}
+
+	if v, ok := d.GetOk("max_instances"); ok {
+		function.MaxInstances = int64(v.(int))
 	}
 
 	log.Printf("[DEBUG] Creating cloud function: %s", function.Name)
@@ -432,7 +430,7 @@ func resourceCloudFunctionsRead(d *schema.ResourceData, meta interface{}) error 
 	}
 
 	d.Set("event_trigger", flattenEventTrigger(function.EventTrigger))
-
+	d.Set("max_instances", function.MaxInstances)
 	d.Set("region", cloudFuncId.Region)
 	d.Set("project", cloudFuncId.Project)
 
@@ -500,12 +498,17 @@ func resourceCloudFunctionsUpdate(d *schema.ResourceData, meta interface{}) erro
 
 	if d.HasChange("environment_variables") {
 		function.EnvironmentVariables = expandEnvironmentVariables(d)
-		updateMaskArr = append(updateMaskArr, "environment_variables")
+		updateMaskArr = append(updateMaskArr, "environmentVariables")
 	}
 
 	if d.HasChange("event_trigger") {
 		function.EventTrigger = expandEventTrigger(d.Get("event_trigger").([]interface{}), project)
 		updateMaskArr = append(updateMaskArr, "eventTrigger", "eventTrigger.failurePolicy.retry")
+	}
+
+	if d.HasChange("max_instances") {
+		function.MaxInstances = int64(d.Get("max_instances").(int))
+		updateMaskArr = append(updateMaskArr, "maxInstances")
 	}
 
 	if len(updateMaskArr) > 0 {
