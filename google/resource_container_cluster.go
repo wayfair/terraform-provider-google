@@ -202,6 +202,25 @@ func resourceContainerCluster() *schema.Resource {
 				},
 			},
 
+			"authenticator_groups_config": {
+				Removed:  "This field is in beta. Use it in the the google-beta provider instead. See https://terraform.io/docs/providers/google/provider_versions.html for more details.",
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"security_group": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
+
 			"cluster_autoscaling": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -654,15 +673,16 @@ func resourceContainerClusterCreate(d *schema.ResourceData, meta interface{}) er
 			Enabled:         d.Get("enable_legacy_abac").(bool),
 			ForceSendFields: []string{"Enabled"},
 		},
-		LoggingService:          d.Get("logging_service").(string),
-		MonitoringService:       d.Get("monitoring_service").(string),
-		NetworkPolicy:           expandNetworkPolicy(d.Get("network_policy")),
-		AddonsConfig:            expandClusterAddonsConfig(d.Get("addons_config")),
-		EnableKubernetesAlpha:   d.Get("enable_kubernetes_alpha").(bool),
-		IpAllocationPolicy:      expandIPAllocationPolicy(d.Get("ip_allocation_policy")),
-		PodSecurityPolicyConfig: expandPodSecurityPolicyConfig(d.Get("pod_security_policy_config")),
-		MasterAuth:              expandMasterAuth(d.Get("master_auth")),
-		ResourceLabels:          expandStringMap(d, "resource_labels"),
+		LoggingService:            d.Get("logging_service").(string),
+		MonitoringService:         d.Get("monitoring_service").(string),
+		NetworkPolicy:             expandNetworkPolicy(d.Get("network_policy")),
+		AddonsConfig:              expandClusterAddonsConfig(d.Get("addons_config")),
+		AuthenticatorGroupsConfig: expandAuthGroupsConfig(d.Get("authenticator_groups_config")),
+		EnableKubernetesAlpha:     d.Get("enable_kubernetes_alpha").(bool),
+		IpAllocationPolicy:        expandIPAllocationPolicy(d.Get("ip_allocation_policy")),
+		PodSecurityPolicyConfig:   expandPodSecurityPolicyConfig(d.Get("pod_security_policy_config")),
+		MasterAuth:                expandMasterAuth(d.Get("master_auth")),
+		ResourceLabels:            expandStringMap(d, "resource_labels"),
 	}
 
 	// Only allow setting node_version on create if it's set to the equivalent master version,
@@ -878,6 +898,9 @@ func resourceContainerClusterRead(d *schema.ResourceData, meta interface{}) erro
 	}
 	d.Set("project", project)
 	if err := d.Set("addons_config", flattenClusterAddonsConfig(cluster.AddonsConfig)); err != nil {
+		return err
+	}
+	if err := d.Set("authenticator_groups_config", flattenAuthGroupsConfig(cluster.AuthenticatorGroupsConfig)); err != nil {
 		return err
 	}
 	nps, err := flattenClusterNodePools(d, config, cluster.NodePools)
@@ -1574,6 +1597,22 @@ func expandClusterAddonsConfig(configured interface{}) *containerBeta.AddonsConf
 	return ac
 }
 
+func expandAuthGroupsConfig(configured interface{}) *containerBeta.AuthenticatorGroupsConfig {
+	l := configured.([]interface{})
+	if len(l) == 0 || l[0] == nil {
+		return nil
+	}
+
+	groupConfig := l[0].(map[string]interface{})
+	result := &containerBeta.AuthenticatorGroupsConfig{
+		Enabled:         groupConfig["enabled"].(bool),
+		SecurityGroup:   groupConfig["security_group"].(string),
+		ForceSendFields: []string{"Enabled"},
+	}
+
+	return result
+}
+
 func expandIPAllocationPolicy(configured interface{}) *containerBeta.IPAllocationPolicy {
 	l := configured.([]interface{})
 	if len(l) == 0 || l[0] == nil {
@@ -1752,6 +1791,20 @@ func flattenClusterAddonsConfig(c *containerBeta.AddonsConfig) []map[string]inte
 	}
 
 	return []map[string]interface{}{result}
+}
+
+func flattenAuthGroupsConfig(c *containerBeta.AuthenticatorGroupsConfig) []map[string]interface{} {
+
+	if c == nil {
+		return nil
+	}
+
+	return []map[string]interface{}{
+		{
+			"enabled":        c.Enabled,
+			"security_group": c.SecurityGroup,
+		},
+	}
 }
 
 func flattenClusterNodePools(d *schema.ResourceData, config *Config, c []*containerBeta.NodePool) ([]map[string]interface{}, error) {
